@@ -3,8 +3,6 @@ const mongoose = require('mongoose');
 const alertSchema = new mongoose.Schema({
   type: {
     type: String,
-    // 🚀 UPDATED: Removed 'emptied' as it wasn't in your original enum.
-    // If you want 'emptied' alerts, add it here and handle its generation.
     enum: ['full', 'maintenance', 'battery', 'sensor_error'],
     required: true
   },
@@ -17,7 +15,7 @@ const alertSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  resolvedAt: { // 🚀 NEW: Track when an alert was resolved
+  resolvedAt: {
     type: Date
   }
 });
@@ -25,13 +23,14 @@ const alertSchema = new mongoose.Schema({
 const binSchema = new mongoose.Schema({
   binId: {
     type: Number,
-    required: true,
+    // 🚀 MODIFIED: binId is no longer required on the schema directly
+    // It will be auto-generated in the pre-save hook
     unique: true,
     min: 1
   },
   location: {
     type: String,
-    required: true,
+    required: true, // Location is still required from frontend
     trim: true
   },
   fillLevel: {
@@ -43,7 +42,7 @@ const binSchema = new mongoose.Schema({
   },
   capacity: {
     type: Number,
-    required: true,
+    required: true, // Capacity is still required from frontend
     default: 100,
     min: 1
   },
@@ -62,8 +61,7 @@ const binSchema = new mongoose.Schema({
   sensorStatus: {
     type: String,
     required: true,
-    // 🚀 ALIGNED: Using your provided enum values
-    enum: ['active', 'warning', 'error', 'low_battery', 'offline', 'maintenance'], // Added 'maintenance' for clearer distinction
+    enum: ['active', 'warning', 'error', 'low_battery', 'offline', 'maintenance'],
     default: 'active'
   },
   lastEmptied: {
@@ -132,6 +130,28 @@ binSchema.pre('save', function(next) {
   next();
 });
 
+// 🚀 NEW/MODIFIED: Pre-save hook to generate binId if not provided
+binSchema.pre('save', async function(next) {
+    if (this.isNew && !this.binId) { // Only generate if it's a new document and binId is not set
+        try {
+            // Find the bin with the highest binId
+            const lastBin = await this.constructor.findOne({}, {}, { sort: { 'binId': -1 } });
+            let nextBinId = 1; // Default starting ID
+
+            if (lastBin && lastBin.binId) {
+                nextBinId = lastBin.binId + 1;
+            }
+            this.binId = nextBinId;
+            next();
+        } catch (error) {
+            next(error); // Pass error to Mongoose
+        }
+    } else {
+        next();
+    }
+});
+
+
 // 🚀 UPDATED: Pre-save middleware to update sensor status based on battery level and maintenance needs
 binSchema.pre('save', function(next) {
   if (this.batteryLevel < 10) { // Critical battery
@@ -150,13 +170,12 @@ binSchema.pre('save', function(next) {
 
 // Method to add alert
 binSchema.methods.addAlert = async function(type, message) {
-  // Prevent duplicate active alerts of the same type (optional, but good practice)
   const existingActiveAlert = this.metadata.alerts.find(alert =>
     !alert.resolved && alert.type === type && alert.message === message
   );
   if (existingActiveAlert) {
     console.log(`Alert of type '${type}' with message '${message}' already exists and is active. Not adding duplicate.`);
-    return this; // Return the current bin instance without adding a new alert
+    return this;
   }
 
   this.metadata.alerts.push({
@@ -165,7 +184,7 @@ binSchema.methods.addAlert = async function(type, message) {
     timestamp: new Date(),
     resolved: false
   });
-  return this.save(); // Save the bin after adding the alert
+  return this.save();
 };
 
 // Method to resolve alert
@@ -173,8 +192,8 @@ binSchema.methods.resolveAlert = async function(alertId) {
   const alert = this.metadata.alerts.id(alertId);
   if (alert) {
     alert.resolved = true;
-    alert.resolvedAt = new Date(); // 🚀 NEW: Set resolvedAt timestamp
-    return this.save(); // Save the bin after resolving the alert
+    alert.resolvedAt = new Date();
+    return this.save();
   }
   return Promise.reject(new Error('Alert not found'));
 };
@@ -188,29 +207,20 @@ binSchema.methods.updateFillLevel = async function(newLevel) {
   const oldLevel = this.fillLevel;
   this.fillLevel = newLevel;
 
-  // Auto-generate alerts based on fill level
   if (newLevel >= 90 && oldLevel < 90) {
     await this.addAlert('full', `Bin ${this.binId} is ${newLevel}% full and needs immediate collection`);
   } else if (newLevel < 90 && oldLevel >= 90) {
-      // 🚀 NEW: Automatically resolve 'full' alert if fill level drops significantly
       const fullAlert = this.metadata.alerts.find(a => a.type === 'full' && !a.resolved);
       if (fullAlert) {
           await this.resolveAlert(fullAlert._id);
       }
   }
 
-
-  // Reset last emptied if fill level dropped significantly (indicates collection)
-  // This logic should be here or in markBinEmptied, but not duplicated.
-  // The `markBinEmptied` endpoint specifically sets fillLevel to 0 and updates lastEmptied.
-  // If sensor data causes a significant drop, this could also trigger an implied emptying.
   if (oldLevel > 80 && newLevel < 20 && (Date.now() - this.lastEmptied.getTime()) / (1000 * 60 * 60 * 24) > 0.1) {
-    // Only update if it hasn't been emptied very recently (e.g., within the last few hours)
     this.lastEmptied = new Date();
-    // Optional: add a specific 'emptied' log entry if needed, but not as a persistent 'alert' type based on schema
   }
 
-  return this.save(); // Save the bin after updating fill level and potentially alerts
+  return this.save();
 };
 
 // Static method to find bins that need collection
@@ -218,7 +228,7 @@ binSchema.statics.findBinsNeedingCollection = function(threshold = 85) {
   return this.find({
     fillLevel: { $gte: threshold },
     isActive: true,
-    sensorStatus: { $ne: 'offline' } // Don't count offline bins for collection
+    sensorStatus: { $ne: 'offline' }
   }).sort({ fillLevel: -1 });
 };
 
@@ -234,7 +244,7 @@ binSchema.statics.findLowBatteryBins = function(threshold = 30) {
 
 // 🚀 MAJOR UPDATE: Enhanced Static method to get comprehensive system statistics for the dashboard
 binSchema.statics.getSystemStats = async function() {
-  const allBins = await this.find({ isActive: true }); // Only consider active bins for dashboard stats
+  const allBins = await this.find({ isActive: true });
 
   let totalBins = allBins.length;
   let averageFillLevel = 0;
@@ -246,10 +256,10 @@ binSchema.statics.getSystemStats = async function() {
     full: 0,
     lowBattery: 0,
     maintenance: 0,
-    inactive: 0, // This generally maps to sensorStatus: 'offline' or 'error' combined, or isActive: false
-    warning: 0, // For sensorStatus 'warning'
-    error: 0, // For sensorStatus 'error'
-    offline: 0 // For sensorStatus 'offline'
+    inactive: 0,
+    warning: 0,
+    error: 0,
+    offline: 0
   };
 
   const todayStart = new Date();
@@ -258,13 +268,11 @@ binSchema.statics.getSystemStats = async function() {
   for (const bin of allBins) {
     averageFillLevel += bin.fillLevel;
 
-    // Categorize fill level for distribution chart
     if (bin.fillLevel <= 25) fillLevelDistribution['0-25']++;
     else if (bin.fillLevel <= 50) fillLevelDistribution['26-50']++;
     else if (bin.fillLevel <= 75) fillLevelDistribution['51-75']++;
     else fillLevelDistribution['76-100']++;
 
-    // Categorize for status breakdown chart
     if (bin.sensorStatus === 'active') {
       statusBreakdown.active++;
     } else if (bin.sensorStatus === 'offline') {
@@ -279,15 +287,12 @@ binSchema.statics.getSystemStats = async function() {
         statusBreakdown.maintenance++;
     }
 
-    // Check for "full" status for the chart
     if (bin.fillLevel >= 90) {
         statusBreakdown.full++;
     }
 
-    // Count active alerts
     activeAlerts += bin.metadata.alerts.filter(alert => !alert.resolved).length;
 
-    // Count collections today (if lastEmptied is today)
     if (bin.lastEmptied >= todayStart) {
         collectionsToday++;
     }
@@ -301,7 +306,7 @@ binSchema.statics.getSystemStats = async function() {
     activeAlerts,
     collectionsToday,
     fillLevelDistribution,
-    statusBreakdown // Now includes 'active', 'full', 'lowBattery', 'maintenance', 'inactive' (mapping to offline/error)
+    statusBreakdown
   };
 };
 
