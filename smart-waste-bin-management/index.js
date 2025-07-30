@@ -66,7 +66,7 @@ app.use(express.static(path.join(__dirname, 'backend', 'public')));
 
 
 // 🚀 Routes
-app.use('/api/bin', binRoutes);
+app.use('/api/bins', binRoutes);
 app.use('/api/auth', authRoutes);
 
 // 🔍 Root route
