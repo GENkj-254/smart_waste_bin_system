@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Smart Waste Bin Dashboard - AI Analytics</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  <style>
+    :root {
+      --primary: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+      --secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      --success: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      --warning: linear-gradient(135deg, #f39c12 0%, #f1c40f 100%);
+      --danger: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+      --info: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+      --dark: #1a2e1a;
+      --darker: #163e16;
+      --light: #eee;
+      --glass: rgba(255, 255, 255, 0.1);
+      --shadow: 0 8px 32px rgba(31, 135, 31, 0.37);
+      --border: rgba(255, 255, 255, 0.18);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--dark);
+      color: var(--light);
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+    .bg-animation {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
+      background: linear-gradient(45deg, #1a2e1a, #163e16, #0f3f0f);
+      background-size: 400% 400%;
+      animation: gradientShift 15s ease infinite;
+    }
+    @keyframes gradientShift {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    .glass {
+      background: var(--glass);
+      backdrop-filter: blur(15px);
+      -webkit-backdrop-filter: blur(15px);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+    .dashboard-container { display: flex; min-height: 100vh; }
+    .sidebar { width: 280px; padding: 2rem; position: relative; z-index: 100; }
+    .sidebar.glass { border-radius: 0 20px 20px 0; margin: 10px 0 10px 10px; }
+    .main-content { flex: 1; padding: 2rem; position: relative; }
+    .header {
+      background: var(--primary); border-radius: 20px; padding: 1.5rem 2rem;
+      margin-bottom: 2rem; display: flex; justify-content: space-between;
+      align-items: center; animation: slideInDown 0.8s ease;
+    }
+    .header h1 { font-size: 1.8rem; font-weight: 700; }
+    .header-info { display: flex; align-items: center; gap: 2rem; }
+    .datetime { text-align: right; }
+    .date { font-size: 1rem; opacity: 0.9; }
+    .time { font-size: 1.4rem; font-weight: 600; margin-top: 0.2rem; }
+    .connection-status { display: flex; align-items: center; gap: 0.5rem; font-weight: 500; }
+    .status-dot { width: 12px; height: 12px; border-radius: 50%; animation: pulse 2s infinite; }
+    .status-connected { background: #00f2fe; }
+    .status-disconnected { background: #ff6b6b; }
+    .status-connecting { background: #feca57; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.7; transform: scale(1.1); }
+    }
+    .logo { text-align: center; margin-bottom: 2rem; }
+    .logo h2 {
+      background: var(--success); -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent; background-clip: text;
+      font-size: 1.8rem; font-weight: 700; margin-bottom: 0.5rem;
+    }
+    .logo p { opacity: 0.7; font-size: 0.9rem; }
+    .user-info {
+      background: var(--glass); border-radius: 15px; padding: 1.5rem;
+      margin-bottom: 2rem; border: 1px solid var(--border);
+    }
+    .user-avatar {
+      width: 60px; height: 60px; border-radius: 50%; background: var(--secondary);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; font-weight: 700; margin: 0 auto 1rem;
+    }
+    .user-details h3, .user-details p { text-align: center; margin-bottom: 0.5rem; }
+    .quick-stats h4 { margin-bottom: 1rem; font-weight: 600; opacity: 0.9; }
+    .stat-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0.8rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .stat-value { font-weight: 600; font-size: 1.1rem; }
+    .btn {
+      padding: 0.8rem 1.5rem; border: none; border-radius: 10px; font-weight: 600;
+      cursor: pointer; transition: all 0.3s ease; position: relative; overflow: hidden;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-danger { background: var(--danger); color: white; }
+    .logout-btn { width: 100%; margin-top: 2rem; }
+    .card {
+      background: var(--glass); border-radius: 20px; padding: 1.5rem;
+      border: 1px solid var(--border); backdrop-filter: blur(15px);
+      animation: slideInUp 0.6s ease forwards; opacity: 0; transform: translateY(30px);
+      transition: all 0.3s ease;
+    }
+    .card:hover { transform: translateY(-5px); box-shadow: 0 15px 35px rgba(31, 135, 31, 0.5); }
+    @keyframes slideInUp { to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideInDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
+    .loading-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(26, 46, 26, 0.8); display: flex; justify-content: center;
+      align-items: center; z-index: 9999; opacity: 0; visibility: hidden; transition: all 0.3s ease;
+    }
+    .loading-overlay.show { opacity: 1; visibility: visible; }
+    .loading-content {
+      background: var(--glass); padding: 2rem; border-radius: 20px; text-align: center;
+      backdrop-filter: blur(15px); border: 1px solid var(--border);
+    }
+    .loading-spinner {
+      width: 50px; height: 50px; border: 4px solid rgba(255,255,255,0.3);
+      border-top: 4px solid #27ae60; border-radius: 50%;
+      animation: spin 1s linear infinite; margin: 0 auto 1rem;
+    }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .form-group { display: flex; flex-direction: column; }
+    .form-group label { margin-bottom: 0.5rem; font-weight: 500; opacity: 0.9; }
+    .form-input, .form-select {
+      padding: 0.8rem; border: 1px solid var(--border); background: var(--glass);
+      border-radius: 10px; color: var(--light); backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+    }
+    .form-input:focus, .form-select:focus { outline: none; border-color: #27ae60; box-shadow: 0 0 15px rgba(39, 174, 96, 0.3); }
+    .bins-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+    .bin-card { position: relative; cursor: pointer; overflow: hidden; }
+    .bin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .bin-id { font-size: 1.3rem; font-weight: 700; background: var(--primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .bin-details { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-bottom: 1.5rem; }
+    .detail-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; }
+    .bin-actions { display: flex; gap: 0.5rem; }
+    .action-btn { flex: 1; padding: 0.6rem; font-size: 0.8rem; border-radius: 8px; }
+    .chart-container { position: relative; height: 300px; margin-top: 1rem; }
+    .notification {
+      position: fixed; top: 2rem; right: 2rem; padding: 1rem 1.5rem; border-radius: 10px;
+      color: white; font-weight: 600; z-index: 2000; transform: translateX(400px);
+      transition: transform 0.3s ease; min-width: 300px;
+    }
+    .notification.show { transform: translateX(0); }
+    .notification.success { background: var(--success); }
+    .notification.error { background: var(--danger); }
+    .notification.info { background: var(--primary); }
+    
+    .admin-only, .supervisor-only, .collection-officer-only { display: none; }
+    body.role-admin .admin-only { display: block; }
+    body.role-supervisor .supervisor-only { display: block; }
+    body.role-collection-officer .collection-officer-only { display: block; }
+    body.role-admin .add-bin-form { display: grid; }
+    body.role-supervisor .add-bin-form, body.role-collection-officer .add-bin-form { display: none; }
+    
+    .add-bin-form { grid-template-columns: 1fr 1fr auto; gap: 1rem; align-items: end; }
+    
+    .ai-card {
+        background: linear-gradient(135deg, rgba(44, 62, 80, 0.2), rgba(52, 73, 94, 0.2));
+        border-left: 5px solid #3498db;
+    }
+    .ai-insights-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1rem;
+    }
+  </style>
+</head>
+<body class="role-admin">
+  <div class="bg-animation"></div>
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-content">
+      <div class="loading-spinner"></div>
+      <p>Initializing Dashboard...</p>
+    </div>
+  </div>
+  <div class="dashboard-container">
+    <div class="sidebar glass">
+      <div class="logo">
+        <h2>🗑️ SmartWaste</h2>
+        <p>Real-time Dashboard</p>
+      </div>
+      <div class="user-info">
+        <div class="user-avatar" id="userAvatar">AD</div>
+        <div class="user-details">
+          <h3 id="userName">Admin User</h3>
+          <p id="userRole">Admin</p>
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom: 2rem;">
+        <label for="roleSelector">Switch Role (Demo)</label>
+        <select id="roleSelector" class="form-select">
+          <option value="Admin" selected>Admin</option>
+          <option value="Supervisor">Supervisor</option>
+          <option value="Collection Officer">Collection Officer</option>
+        </select>
+      </div>
+      <div class="quick-stats">
+        <h4>Quick Stats</h4>
+        <div class="stat-item"><span>Total Bins</span><span class="stat-value" id="totalBins">--</span></div>
+        <div class="stat-item"><span>Full Bins</span><span class="stat-value" id="fullBins">--</span></div>
+        <div class="stat-item"><span>Avg. Fill</span><span class="stat-value" id="avgFill">--%</span></div>
+      </div>
+      <button class="btn btn-danger logout-btn" onclick="dashboard.logout()">🚪 Logout</button>
+    </div>
+    <div class="main-content">
+      <div class="header">
+        <h1>Dashboard Overview</h1>
+        <div class="header-info">
+          <div class="datetime">
+            <div class="date" id="currentDate">...</div>
+            <div class="time" id="currentTime">...</div>
+          </div>
+          <div class="connection-status" id="connectionStatus">
+            <div class="status-dot status-connecting"></div>
+            <span>Connecting...</span>
+          </div>
+        </div>
+      </div>
+      <div class="card admin-only">
+        <h3>🆕 Add New Bin</h3>
+        <form class="add-bin-form" id="addBinForm">
+          <div class="form-group">
+            <label for="binLocation">Location</label>
+            <input type="text" id="binLocation" class="form-input" placeholder="e.g., Main St & 1st Ave" required />
+          </div>
+          <div class="form-group">
+            <label for="binCapacity">Capacity (L)</label>
+            <input type="number" id="binCapacity" class="form-input" placeholder="100" required />
+          </div>
+          <button type="submit" class="btn btn-primary">➕ Add Bin</button>
+        </form>
+      </div>
+      
+      <div class="card ai-card" id="aiAnalyticsSection">
+        <h3>🤖 AI Analytics & Alerts</h3>
+        <div class="ai-insights-grid" id="aiInsightsGrid"></div>
+      </div>
+
+      <div class="card">
+        <h3>📊 Fill Level Overview</h3>
+        <div class="chart-container"><canvas id="binChart"></canvas></div>
+      </div>
+      <div class="bins-grid" id="binsGrid"></div>
+    </div>
+  </div>
+
+  <script>
+    class AIAnalytics {
+      getInsights(bins) {
+        if (!bins || bins.length === 0) return [{ title: '🧠 Waiting for Data', message: 'No bin data available to analyze.', severity: 'info' }];
+        const insights = [];
+        const criticalBins = bins.filter(b => b.fillLevel >= 85);
+        if (criticalBins.length > 0) insights.push({ title: '🚨 Critical Alert: Bins Full', message: `${criticalBins.length} bin(s) require immediate collection: ${criticalBins.map(b => b.binId).join(', ')}.`, severity: 'critical' });
+        const warningBins = bins.filter(b => b.fillLevel >= 70 && b.fillLevel < 85);
+        if (warningBins.length > 0) insights.push({ title: '⚠️ Warning: High Fill Levels', message: `Collection should be scheduled for ${warningBins.length} bin(s).`, severity: 'warning' });
+        const lowBatteryBins = bins.filter(b => b.batteryLevel < 20);
+        if (lowBatteryBins.length > 0) insights.push({ title: '🔋 Low Battery Warning', message: `Maintenance needed for ${lowBatteryBins.length} bin(s).`, severity: 'warning' });
+        if (insights.length === 0) insights.push({ title: '✅ System Nominal', message: 'All bins are operating within normal parameters.', severity: 'info' });
+        return insights;
+      }
+    }
+
+    class SmartWasteDashboard {
+      constructor() {
+        this.API_URL = 'https://smart-waste-bin-management-system.onrender.com/api';
+        this.WS_URL = 'wss://smart-waste-bin-management-system.onrender.com';
+        this.userSession = {};
+        this.binData = [];
+        this.chart = null;
+        this.aiAnalytics = new AIAnalytics();
+        this.socket = null;
+        this.init();
+      }
+
+      init() {
+        this.showLoadingOverlay(true, 'Initializing Dashboard...');
+        this.setupEventListeners();
+        this.switchRole(sessionStorage.getItem('userRole') || 'Admin');
+        this.updateDateTime();
+        setInterval(() => this.updateDateTime(), 1000);
+        this.connectToBackend();
+      }
+      
+      setupEventListeners() {
+        document.getElementById('roleSelector').addEventListener('change', (e) => this.switchRole(e.target.value));
+        document.getElementById('addBinForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.addNewBin();
+        });
+      }
+
+      switchRole(role) {
+        this.userSession = { username: `${role} User`, role: role };
+        sessionStorage.setItem('userRole', role);
+        document.body.className = `role-${role.toLowerCase().replace(/ /g, '-')}`;
+        document.getElementById('userName').textContent = this.userSession.username;
+        document.getElementById('userRole').textContent = this.userSession.role;
+        const initials = this.userSession.username.split(' ').map(n => n[0]).join('');
+        document.getElementById('userAvatar').textContent = initials;
+        this.renderDashboard();
+      }
+      
+      async connectToBackend() {
+        await this.fetchInitialData();
+        this.setupWebSocket();
+      }
+
+      async fetchInitialData() {
+        this.showLoadingOverlay(true, 'Fetching bin data...');
+        try {
+            const response = await fetch(`${this.API_URL}/bins`);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            this.binData = await response.json();
+            this.renderDashboard();
+        } catch (error) {
+            console.error("Failed to fetch initial data:", error);
+            this.showNotification('Could not get initial bin data.', 'error');
+            this.updateConnectionStatus('disconnected', 'Server Unreachable');
+        } finally {
+            this.showLoadingOverlay(false);
+        }
+      }
+
+      setupWebSocket() {
+        this.updateConnectionStatus('connecting', 'Connecting...');
+        this.socket = new WebSocket(this.WS_URL);
+
+        this.socket.onopen = () => {
+            this.updateConnectionStatus('connected', 'Live');
+            this.showNotification('Live connection established!', 'success');
+        };
+
+        this.socket.onmessage = (event) => {
+            try {
+                const message = JSON.parse(event.data);
+                this.handleSocketMessage(message);
+            } catch (error) {
+                console.error("Error parsing WebSocket message:", error);
+            }
+        };
+
+        this.socket.onclose = () => {
+            this.updateConnectionStatus('disconnected', 'Reconnecting...');
+            setTimeout(() => this.setupWebSocket(), 5000);
+        };
+
+        this.socket.onerror = (error) => {
+            console.error("WebSocket error:", error);
+            this.socket.close();
+        };
+      }
+      
+      handleSocketMessage(message) {
+        let notificationMessage = '';
+        switch (message.type) {
+            case 'bin-update':
+                const binIndex = this.binData.findIndex(b => b.binId === message.payload.binId);
+                if (binIndex !== -1) this.binData[binIndex] = { ...this.binData[binIndex], ...message.payload };
+                break;
+            case 'bin-added':
+                this.binData.unshift(message.payload);
+                notificationMessage = `New bin added: ${message.payload.binId}`;
+                break;
+            case 'bin-removed':
+                this.binData = this.binData.filter(b => b.binId !== message.payload.binId);
+                notificationMessage = `Bin removed: ${message.payload.binId}`;
+                break;
+            default: return;
+        }
+        this.renderDashboard();
+        if (notificationMessage) this.showNotification(notificationMessage, 'info');
+      }
+
+      updateDateTime() {
+        const now = new Date();
+        document.getElementById('currentDate').textContent = now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        document.getElementById('currentTime').textContent = now.toLocaleTimeString();
+      }
+
+      renderDashboard() {
+        this.updateQuickStats();
+        this.renderAIAnalytics();
+        this.renderBinCards();
+        this.renderChart();
+      }
+
+      updateQuickStats() {
+        const totalBins = this.binData.length;
+        const fullBins = this.binData.filter(b => b.fillLevel >= 85).length;
+        const avgFill = totalBins > 0 ? Math.round(this.binData.reduce((sum, b) => sum + b.fillLevel, 0) / totalBins) : 0;
+        document.getElementById('totalBins').textContent = totalBins;
+        document.getElementById('fullBins').textContent = fullBins;
+        document.getElementById('avgFill').textContent = `${avgFill}%`;
+      }
+      
+      renderAIAnalytics() {
+        document.getElementById('aiInsightsGrid').innerHTML = this.aiAnalytics.getInsights(this.binData).map(insight => 
+            `<div class="insight-item severity-${insight.severity}">
+                <div class="insight-title">${insight.title}</div>
+                <div class="insight-message">${insight.message}</div>
+            </div>`
+        ).join('');
+      }
+
+      renderBinCards() {
+        document.getElementById('binsGrid').innerHTML = this.getBinsForRole().map(bin => this.createBinCardHTML(bin)).join('');
+      }
+
+      getBinsForRole() {
+          const role = this.userSession.role;
+          if (role === 'Admin') return this.binData;
+          if(role === 'Supervisor') return this.binData;
+          if(role === 'Collection Officer') return this.binData.filter(b => b.fillLevel >= 70);
+          return [];
+      }
+
+      createBinCardHTML(bin) {
+        const fillClass = bin.fillLevel >= 85 ? 'danger' : bin.fillLevel >= 70 ? 'warning' : '';
+        const role = this.userSession.role;
+        let actionsHtml = '';
+        if (role === 'Admin') {
+            actionsHtml = `<button class="btn btn-primary action-btn" onclick="dashboard.showNotification('Route assigned', 'info')">Assign Route</button><button class="btn btn-danger action-btn" onclick="dashboard.deleteBin('${bin.binId}')">Delete</button>`;
+        } else if (role === 'Supervisor') {
+            actionsHtml = `<button class="btn btn-primary action-btn" onclick="dashboard.showNotification('Officer assigned', 'info')">Assign Officer</button>`;
+        } else if (role === 'Collection Officer') {
+            actionsHtml = `<button class="btn btn-primary action-btn" onclick="dashboard.markCollected('${bin.binId}')">Mark Collected</button>`;
+        }
+        return `<div class="card bin-card">
+          <div class="bin-header">
+            <div class="bin-id">${bin.binId}</div>
+          </div>
+          <div class="fill-display">
+            <div class="fill-percentage ${fillClass}" style="font-size: 3rem; font-weight: 700;">${bin.fillLevel}%</div>
+            <div class="progress-container" style="position: relative; height: 8px; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; margin-top: 1rem;">
+              <div class="progress-bar" style="height: 100%; border-radius: 10px; transition: width 1s ease, background 0.3s ease; width: ${bin.fillLevel}%; background: ${this.getFillLevelColor(bin.fillLevel)};"></div>
+            </div>
+          </div>
+          <div class="bin-details">
+            <div class="detail-item">📍 <span>${bin.location}</span></div>
+            <div class="detail-item">🔋 <span>${bin.batteryLevel}% battery</span></div>
+          </div>
+          <div class="bin-actions">${actionsHtml}</div>
+        </div>`;
+      }
+      
+      async markCollected(binId) {
+          this.showNotification(`Marking bin ${binId} as collected...`, 'info');
+          // In a real app, you would send this update to the server via API or WebSocket
+      }
+
+      async deleteBin(binId) {
+          if(!confirm(`Are you sure you want to delete bin ${binId}?`)) return;
+          try {
+            const response = await fetch(`${this.API_URL}/bins/${binId}`, { method: 'DELETE' });
+            if(!response.ok) throw new Error('Server responded with an error.');
+            this.showNotification(`Bin ${binId} deleted.`, 'success');
+          } catch(error) {
+            this.showNotification('Could not delete bin.', 'error');
+          }
+      }
+
+      async addNewBin() {
+          const location = document.getElementById('binLocation').value;
+          const capacity = document.getElementById('binCapacity').value;
+          if(!location || !capacity) return;
+          try {
+            const response = await fetch(`${this.API_URL}/bins`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ location, capacity: parseInt(capacity) })
+            });
+            if(!response.ok) throw new Error('Server responded with an error.');
+            document.getElementById('addBinForm').reset();
+            this.showNotification('New bin added successfully!', 'success');
+          } catch(error) {
+            this.showNotification('Could not add new bin.', 'error');
+          }
+      }
+
+      getFillLevelColor(fillLevel) {
+        if (fillLevel >= 85) return 'var(--danger)';
+        if (fillLevel >= 70) return 'var(--warning)';
+        return 'var(--success)';
+      }
+
+      renderChart() {
+        const ctx = document.getElementById('binChart').getContext('2d');
+        if (this.chart) this.chart.destroy();
+        const binsForRole = this.getBinsForRole();
+        this.chart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: binsForRole.map(b => b.binId),
+            datasets: [{
+              label: 'Fill Level (%)',
+              data: binsForRole.map(b => b.fillLevel),
+              backgroundColor: binsForRole.map(b => this.getFillLevelColor(b.fillLevel)),
+              borderRadius: 8,
+            }]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: { beginAtZero: true, max: 100, ticks: { color: 'white' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+              x: { ticks: { color: 'white' }, grid: { display: false } }
+            }
+          }
+        });
+      }
+
+      updateConnectionStatus(status, text) {
+        const el = document.getElementById('connectionStatus');
+        const dot = el.querySelector('.status-dot');
+        const span = el.querySelector('span');
+        dot.className = `status-dot status-${status}`;
+        span.textContent = text;
+      }
+
+      showLoadingOverlay(show, text = 'Loading...') {
+        const overlay = document.getElementById('loadingOverlay');
+        overlay.querySelector('p').textContent = text;
+        overlay.classList.toggle('show', show);
+      }
+      
+      showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        setTimeout(() => notification.classList.add('show'), 100);
+        setTimeout(() => {
+          notification.classList.remove('show');
+          setTimeout(() => notification.remove(), 300);
+        }, 5000);
+      }
+
+      logout() {
+        if (confirm('Are you sure you want to logout?')) {
+            this.showNotification('Logging out...', 'info');
+            sessionStorage.clear();
+            localStorage.clear();
+            setTimeout(() => { window.location.href = 'login.html'; }, 1500);
+        }
+      }
+    }
+
+    let dashboard;
+    document.addEventListener('DOMContentLoaded', () => {
+      dashboard = new SmartWasteDashboard();
+    });
+  </script>
+</body>
+</html>

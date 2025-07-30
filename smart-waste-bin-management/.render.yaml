@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: smart-waste-backend
+    env: node
+    rootDir: .  # Use the root because index.js and package.json are now here
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: MONGODB_URI
+      - key: JWT_SECRET
+      - key: NODE_ENV
+        value: production
+    healthCheckPath: /
+    healthCheckInterval: 10
