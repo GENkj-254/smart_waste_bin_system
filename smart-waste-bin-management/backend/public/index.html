@@ -1,0 +1,80 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Waste Bin Management System</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Roboto', Arial, sans-serif;
+    }
+    .container {
+      background: #fff;
+      padding: 36px 28px;
+      border-radius: 18px;
+      box-shadow: 0 4px 24px rgba(44, 62, 80, 0.12);
+      width: 370px;
+      text-align: center;
+      animation: fadeIn 0.7s;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(30px);}
+      to { opacity: 1; transform: translateY(0);}
+    }
+    .icon {
+      font-size: 3em;
+      margin-bottom: 14px;
+      color: #27ae60;
+      animation: bounce 1.2s infinite alternate;
+    }
+    @keyframes bounce {
+      to { transform: translateY(-8px);}
+    }
+    h1 {
+      margin-bottom: 18px;
+      color: #27ae60;
+      font-weight: 700;
+      letter-spacing: 1px;
+      font-size: 1.7em;
+    }
+    p {
+      font-size: 1.08em;
+      color: #2c3e50;
+      margin-bottom: 24px;
+    }
+    .cta-btn {
+      display: block;
+      margin: 12px auto;
+      padding: 12px 32px;
+      background: #27ae60;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1.1em;
+      font-weight: 700;
+      text-decoration: none;
+      transition: background 0.2s;
+      width: 70%;
+    }
+    .cta-btn:hover {
+      background: #219150;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">🗑️</div>
+    <h1>Welcome to the Smart Waste Bin System</h1>
+    <p>Monitor, manage, and optimize your waste bins efficiently.</p>
+    <a href="login.html" class="cta-btn">Login</a>
+    <a href="register.html" class="cta-btn">Register</a>
+  </div>
+</body>
+</html>
