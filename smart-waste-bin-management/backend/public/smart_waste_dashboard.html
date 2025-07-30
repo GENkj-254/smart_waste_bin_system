@@ -5,58 +5,65 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Smart Waste Bin Dashboard - AI Analytics</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+  <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
   <style>
     :root {
-      --primary: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
-      --secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-      --success: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-      --warning: linear-gradient(135deg, #f39c12 0%, #f1c40f 100%);
-      --danger: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-      --info: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
-      --dark: #1a2e1a;
-      --darker: #163e16;
-      --light: #eee;
-      --glass: rgba(255, 255, 255, 0.1);
-      --shadow: 0 8px 32px rgba(31, 135, 31, 0.37);
-      --border: rgba(255, 255, 255, 0.18);
+      --primary-green: #2ecc71;
+      --dark-green-gradient: linear-gradient(135deg, #163e16 0%, #0f3f0f 100%);
+      --light-green-gradient: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+      --accent-blue: #3498db;
+      --success: #28a745;
+      --warning: #ffc107;
+      --danger: #dc3545;
+      --info: #17a2b8;
+      --dark-bg: #0d2a0d;
+      --darker-bg: #0a200a;
+      --text-light: #ecf0f1;
+      --glass-bg: rgba(255, 255, 255, 0.08);
+      --glass-border: rgba(255, 255, 255, 0.15);
+      --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      --hover-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+      --animation-speed: 0.6s;
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Inter', sans-serif;
-      background: var(--dark);
-      color: var(--light);
+      background: var(--dark-bg);
+      color: var(--text-light);
       overflow-x: hidden;
       min-height: 100vh;
+      display: flex; /* For dashboard-container flex */
     }
     .bg-animation {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
-      background: linear-gradient(45deg, #1a2e1a, #163e16, #0f3f0f);
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -2;
+      background: linear-gradient(45deg, var(--darker-bg), var(--dark-bg), #061506);
       background-size: 400% 400%;
-      animation: gradientShift 15s ease infinite;
+      animation: gradientShift 18s ease infinite;
     }
     @keyframes gradientShift {
       0%, 100% { background-position: 0% 50%; }
       50% { background-position: 100% 50%; }
     }
     .glass {
-      background: var(--glass);
+      background: var(--glass-bg);
       backdrop-filter: blur(15px);
       -webkit-backdrop-filter: blur(15px);
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--card-shadow);
+      transition: all var(--animation-speed) ease;
     }
-    .dashboard-container { display: flex; min-height: 100vh; }
-    .sidebar { width: 280px; padding: 2rem; position: relative; z-index: 100; }
+    .dashboard-container { flex: 1; display: flex; }
+    .sidebar { width: 280px; padding: 2rem; position: relative; z-index: 100; display: flex; flex-direction: column; }
     .sidebar.glass { border-radius: 0 20px 20px 0; margin: 10px 0 10px 10px; }
-    .main-content { flex: 1; padding: 2rem; position: relative; }
+    .main-content { flex: 1; padding: 2rem; position: relative; display: flex; flex-direction: column; gap: 1.5rem; }
     .header {
-      background: var(--primary); border-radius: 20px; padding: 1.5rem 2rem;
-      margin-bottom: 2rem; display: flex; justify-content: space-between;
-      align-items: center; animation: slideInDown 0.8s ease;
+      background: var(--light-green-gradient); border-radius: 20px; padding: 1.5rem 2rem;
+      display: flex; justify-content: space-between; align-items: center; animation: slideInDown var(--animation-speed) ease;
+      box-shadow: var(--card-shadow);
     }
-    .header h1 { font-size: 1.8rem; font-weight: 700; }
+    .header h1 { font-size: 1.8rem; font-weight: 700; color: white; }
     .header-info { display: flex; align-items: center; gap: 2rem; }
     .datetime { text-align: right; }
     .date { font-size: 1rem; opacity: 0.9; }
@@ -72,104 +79,234 @@
     }
     .logo { text-align: center; margin-bottom: 2rem; }
     .logo h2 {
-      background: var(--success); -webkit-background-clip: text;
+      background: var(--light-green-gradient); -webkit-background-clip: text;
       -webkit-text-fill-color: transparent; background-clip: text;
-      font-size: 1.8rem; font-weight: 700; margin-bottom: 0.5rem;
+      font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; letter-spacing: 1px;
     }
-    .logo p { opacity: 0.7; font-size: 0.9rem; }
+    .logo p { opacity: 0.8; font-size: 0.9rem; }
     .user-info {
-      background: var(--glass); border-radius: 15px; padding: 1.5rem;
-      margin-bottom: 2rem; border: 1px solid var(--border);
+      background: rgba(0,0,0,0.1); border-radius: 15px; padding: 1.5rem;
+      margin-bottom: 2rem; border: 1px solid rgba(255,255,255,0.1);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
     }
     .user-avatar {
-      width: 60px; height: 60px; border-radius: 50%; background: var(--secondary);
+      width: 60px; height: 60px; border-radius: 50%; background: var(--accent-blue);
       display: flex; align-items: center; justify-content: center;
-      font-size: 1.5rem; font-weight: 700; margin: 0 auto 1rem;
+      font-size: 1.5rem; font-weight: 700; margin: 0 auto 1rem; color: white;
     }
     .user-details h3, .user-details p { text-align: center; margin-bottom: 0.5rem; }
-    .quick-stats h4 { margin-bottom: 1rem; font-weight: 600; opacity: 0.9; }
+    .quick-stats { margin-top: auto; padding-top: 2rem; } /* Push to bottom */
+    .quick-stats h4 { margin-bottom: 1rem; font-weight: 600; opacity: 0.9; color: var(--primary-green); }
     .stat-item {
       display: flex; justify-content: space-between; align-items: center;
       padding: 0.8rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);
+      font-size: 1rem;
     }
-    .stat-value { font-weight: 600; font-size: 1.1rem; }
+    .stat-value { font-weight: 600; font-size: 1.2rem; color: var(--primary-green); }
     .btn {
       padding: 0.8rem 1.5rem; border: none; border-radius: 10px; font-weight: 600;
       cursor: pointer; transition: all 0.3s ease; position: relative; overflow: hidden;
+      color: white;
     }
     .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
-    .btn-primary { background: var(--primary); color: white; }
-    .btn-danger { background: var(--danger); color: white; }
-    .logout-btn { width: 100%; margin-top: 2rem; }
+    .btn-primary { background: var(--light-green-gradient); }
+    .btn-danger { background: var(--danger); }
+    .btn-info { background: var(--info); } /* For Assign Route/Officer */
+    .logout-btn { width: 100%; margin-top: 2rem; background: var(--dark-green-gradient); border: 1px solid rgba(255,255,255,0.1); }
+    .logout-btn:hover { background: var(--danger); }
+
     .card {
-      background: var(--glass); border-radius: 20px; padding: 1.5rem;
-      border: 1px solid var(--border); backdrop-filter: blur(15px);
-      animation: slideInUp 0.6s ease forwards; opacity: 0; transform: translateY(30px);
+      background: var(--glass-bg); border-radius: 20px; padding: 1.5rem;
+      border: 1px solid var(--glass-border); backdrop-filter: blur(15px);
+      animation: fadeIn var(--animation-speed) ease forwards; opacity: 0; transform: translateY(20px);
       transition: all 0.3s ease;
+      box-shadow: var(--card-shadow);
     }
-    .card:hover { transform: translateY(-5px); box-shadow: 0 15px 35px rgba(31, 135, 31, 0.5); }
-    @keyframes slideInUp { to { opacity: 1; transform: translateY(0); } }
+    .card:hover { transform: translateY(-5px); box-shadow: var(--hover-shadow); }
+    @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
     @keyframes slideInDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
+
     .loading-overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(26, 46, 26, 0.8); display: flex; justify-content: center;
+      background: rgba(13, 42, 13, 0.9); display: flex; justify-content: center;
       align-items: center; z-index: 9999; opacity: 0; visibility: hidden; transition: all 0.3s ease;
     }
     .loading-overlay.show { opacity: 1; visibility: visible; }
     .loading-content {
-      background: var(--glass); padding: 2rem; border-radius: 20px; text-align: center;
-      backdrop-filter: blur(15px); border: 1px solid var(--border);
+      background: var(--glass-bg); padding: 2rem; border-radius: 20px; text-align: center;
+      backdrop-filter: blur(15px); border: 1px solid var(--glass-border);
+      box-shadow: var(--card-shadow);
     }
     .loading-spinner {
       width: 50px; height: 50px; border: 4px solid rgba(255,255,255,0.3);
-      border-top: 4px solid #27ae60; border-radius: 50%;
+      border-top: 4px solid var(--primary-green); border-radius: 50%;
       animation: spin 1s linear infinite; margin: 0 auto 1rem;
     }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-    .form-group { display: flex; flex-direction: column; }
-    .form-group label { margin-bottom: 0.5rem; font-weight: 500; opacity: 0.9; }
+    
+    .form-group { display: flex; flex-direction: column; margin-bottom: 1rem; }
+    .form-group label { margin-bottom: 0.5rem; font-weight: 500; opacity: 0.9; color: var(--primary-green); }
     .form-input, .form-select {
-      padding: 0.8rem; border: 1px solid var(--border); background: var(--glass);
-      border-radius: 10px; color: var(--light); backdrop-filter: blur(10px);
-      transition: all 0.3s ease;
+      padding: 0.8rem; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.1);
+      border-radius: 10px; color: var(--text-light); backdrop-filter: blur(10px);
+      transition: all 0.3s ease; font-size: 1rem;
     }
-    .form-input:focus, .form-select:focus { outline: none; border-color: #27ae60; box-shadow: 0 0 15px rgba(39, 174, 96, 0.3); }
-    .bins-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
-    .bin-card { position: relative; cursor: pointer; overflow: hidden; }
+    .form-input::placeholder { color: rgba(255,255,255,0.6); }
+    .form-input:focus, .form-select:focus { outline: none; border-color: var(--primary-green); box-shadow: 0 0 15px rgba(39, 174, 96, 0.3); }
+    
+    .bins-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; }
+    .bin-card { position: relative; cursor: pointer; overflow: hidden; display: flex; flex-direction: column; }
     .bin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-    .bin-id { font-size: 1.3rem; font-weight: 700; background: var(--primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-    .bin-details { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-bottom: 1.5rem; }
-    .detail-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; }
-    .bin-actions { display: flex; gap: 0.5rem; }
-    .action-btn { flex: 1; padding: 0.6rem; font-size: 0.8rem; border-radius: 8px; }
-    .chart-container { position: relative; height: 300px; margin-top: 1rem; }
+    .bin-id { font-size: 1.3rem; font-weight: 700; background: var(--light-green-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    
+    .bin-status-badge {
+        padding: 0.3rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: white;
+        text-transform: uppercase;
+        background-color: #555; /* Default gray */
+        transition: background-color 0.3s ease;
+    }
+    .bin-status-badge.active { background-color: var(--success); }
+    .bin-status-badge.full { background-color: var(--danger); }
+    .bin-status-badge.low { background-color: var(--warning); } /* For low_battery and maintenance */
+    .bin-status-badge.inactive { background-color: #95a5a6; } /* For offline, error */
+
+
+    .fill-display { text-align: center; margin-bottom: 1.5rem; }
+    .fill-percentage { font-size: 3.5rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .fill-percentage.danger { color: var(--danger); }
+    .fill-percentage.warning { color: var(--warning); }
+    .fill-percentage.success { color: var(--primary-green); }
+
+    .progress-container {
+        position: relative; height: 10px; background: rgba(255,255,255,0.15); border-radius: 10px; overflow: hidden; margin-top: 0.5rem;
+        box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .progress-bar {
+        height: 100%; border-radius: 10px; transition: width 1s ease, background 0.3s ease;
+        background: var(--primary-green); /* Default green */
+    }
+
+    .bin-details { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-top: 1rem; font-size: 0.95rem; }
+    .detail-item { display: flex; align-items: center; gap: 0.5rem; opacity: 0.9; }
+    .detail-item span { font-weight: 500; }
+    .bin-actions { display: flex; gap: 0.5rem; margin-top: auto; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); }
+    .action-btn { flex: 1; padding: 0.6rem; font-size: 0.85rem; border-radius: 8px; }
+    
+    .chart-section { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .chart-container { position: relative; height: 300px; }
+    .chart-card { min-height: 380px; display: flex; flex-direction: column; }
+    .chart-card h3 { margin-bottom: 1rem; color: var(--primary-green); }
+
     .notification {
       position: fixed; top: 2rem; right: 2rem; padding: 1rem 1.5rem; border-radius: 10px;
       color: white; font-weight: 600; z-index: 2000; transform: translateX(400px);
-      transition: transform 0.3s ease; min-width: 300px;
+      transition: transform 0.3s ease, background 0.3s ease; min-width: 300px;
+      box-shadow: var(--card-shadow);
     }
     .notification.show { transform: translateX(0); }
     .notification.success { background: var(--success); }
     .notification.error { background: var(--danger); }
-    .notification.info { background: var(--primary); }
+    .notification.info { background: var(--info); }
+    .notification.warning { background: var(--warning); } /* New */
+    .notification.critical { background: var(--danger); animation: shake 0.5s; } /* New */
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
+      20%, 40%, 60%, 80% { transform: translateX(10px); }
+    }
     
     .admin-only, .supervisor-only, .collection-officer-only { display: none; }
     body.role-admin .admin-only { display: block; }
     body.role-supervisor .supervisor-only { display: block; }
     body.role-collection-officer .collection-officer-only { display: block; }
+    
     body.role-admin .add-bin-form { display: grid; }
     body.role-supervisor .add-bin-form, body.role-collection-officer .add-bin-form { display: none; }
     
     .add-bin-form { grid-template-columns: 1fr 1fr auto; gap: 1rem; align-items: end; }
     
     .ai-card {
-        background: linear-gradient(135deg, rgba(44, 62, 80, 0.2), rgba(52, 73, 94, 0.2));
-        border-left: 5px solid #3498db;
+        background: linear-gradient(135deg, rgba(40, 167, 69, 0.15), rgba(0, 128, 0, 0.1));
+        border-left: 5px solid var(--success);
+        position: relative;
     }
+    .ai-card h3 { color: var(--success); }
     .ai-insights-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
         gap: 1rem;
+        margin-top: 1rem;
+    }
+    .insight-item {
+        background: rgba(0,0,0,0.1);
+        border-radius: 10px;
+        padding: 1rem;
+        border: 1px solid rgba(255,255,255,0.1);
+        transition: all 0.3s ease;
+    }
+    .insight-item:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+    .insight-title {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .insight-title::before {
+        content: '';
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+    }
+    .insight-item.severity-critical .insight-title::before { background-color: var(--danger); }
+    .insight-item.severity-warning .insight-title::before { background-color: var(--warning); }
+    .insight-item.severity-info .insight-title::before { background-color: var(--info); }
+    .insight-item.severity-critical { border-left: 4px solid var(--danger); }
+    .insight-item.severity-warning { border-left: 4px solid var(--warning); }
+    .insight-item.severity-info { border-left: 4px solid var(--info); }
+    .insight-message { font-size: 0.9rem; opacity: 0.8; }
+
+    /* Chart.js tooltips style */
+    .chartjs-tooltip {
+        background: rgba(0,0,0,0.8) !important;
+        border-radius: 8px !important;
+        padding: 10px !important;
+        border: 1px solid rgba(255,255,255,0.2) !important;
+        font-family: 'Inter', sans-serif !important;
+    }
+    .chartjs-tooltip table {
+        margin: 0 !important;
+    }
+    .chartjs-tooltip tr {
+        border-width: 0 !important;
+    }
+    .chartjs-tooltip td {
+        padding: 2px 0 !important;
+        border-width: 0 !important;
+    }
+    .chartjs-tooltip-key {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        margin-right: 8px;
+        border-radius: 50%;
+    }
+    .chartjs-tooltip-label {
+        color: var(--text-light) !important;
+        font-weight: 500 !important;
+    }
+    .chartjs-tooltip-value {
+        color: var(--text-light) !important;
+        font-weight: 700 !important;
     }
   </style>
 </head>
@@ -205,10 +342,12 @@
       <div class="quick-stats">
         <h4>Quick Stats</h4>
         <div class="stat-item"><span>Total Bins</span><span class="stat-value" id="totalBins">--</span></div>
-        <div class="stat-item"><span>Full Bins</span><span class="stat-value" id="fullBins">--</span></div>
-        <div class="stat-item"><span>Avg. Fill</span><span class="stat-value" id="avgFill">--%</span></div>
+        <div class="stat-item"><span>Bins Needing Collection</span><span class="stat-value" id="fullBins">--</span></div>
+        <div class="stat-item"><span>Avg. Fill Level</span><span class="stat-value" id="avgFill">--%</span></div>
+        <div class="stat-item"><span>Active Alerts</span><span class="stat-value" id="activeAlerts">--</span></div>
+        <div class="stat-item"><span>Collections Today</span><span class="stat-value" id="collectionsToday">--</span></div>
       </div>
-      <button class="btn btn-danger logout-btn" onclick="dashboard.logout()">🚪 Logout</button>
+      <button class="btn logout-btn" onclick="dashboard.logout()">🚪 Logout</button>
     </div>
     <div class="main-content">
       <div class="header">
@@ -233,7 +372,7 @@
           </div>
           <div class="form-group">
             <label for="binCapacity">Capacity (L)</label>
-            <input type="number" id="binCapacity" class="form-input" placeholder="100" required />
+            <input type="number" id="binCapacity" class="form-input" placeholder="100" value="100" min="1" required />
           </div>
           <button type="submit" class="btn btn-primary">➕ Add Bin</button>
         </form>
@@ -244,10 +383,17 @@
         <div class="ai-insights-grid" id="aiInsightsGrid"></div>
       </div>
 
-      <div class="card">
-        <h3>📊 Fill Level Overview</h3>
-        <div class="chart-container"><canvas id="binChart"></canvas></div>
+      <div class="chart-section">
+        <div class="card chart-card">
+          <h3>📊 Fill Level Distribution</h3>
+          <div class="chart-container"><canvas id="fillLevelChart"></canvas></div>
+        </div>
+        <div class="card chart-card">
+          <h3>📈 Bin Status Breakdown</h3>
+          <div class="chart-container"><canvas id="statusBreakdownChart"></canvas></div>
+        </div>
       </div>
+
       <div class="bins-grid" id="binsGrid"></div>
     </div>
   </div>
@@ -257,13 +403,30 @@
       getInsights(bins) {
         if (!bins || bins.length === 0) return [{ title: '🧠 Waiting for Data', message: 'No bin data available to analyze.', severity: 'info' }];
         const insights = [];
-        const criticalBins = bins.filter(b => b.fillLevel >= 85);
+        const criticalBins = bins.filter(b => b.fillLevel >= 90); // 90% for critical
         if (criticalBins.length > 0) insights.push({ title: '🚨 Critical Alert: Bins Full', message: `${criticalBins.length} bin(s) require immediate collection: ${criticalBins.map(b => b.binId).join(', ')}.`, severity: 'critical' });
-        const warningBins = bins.filter(b => b.fillLevel >= 70 && b.fillLevel < 85);
+        
+        const warningBins = bins.filter(b => b.fillLevel >= 75 && b.fillLevel < 90); // 75-90% for warning
         if (warningBins.length > 0) insights.push({ title: '⚠️ Warning: High Fill Levels', message: `Collection should be scheduled for ${warningBins.length} bin(s).`, severity: 'warning' });
-        const lowBatteryBins = bins.filter(b => b.batteryLevel < 20);
+        
+        const lowBatteryBins = bins.filter(b => b.batteryLevel < 20); // Your bin.js uses <20 for low_battery status
         if (lowBatteryBins.length > 0) insights.push({ title: '🔋 Low Battery Warning', message: `Maintenance needed for ${lowBatteryBins.length} bin(s).`, severity: 'warning' });
+        
+        const errorBins = bins.filter(b => b.sensorStatus === 'error');
+        if (errorBins.length > 0) insights.push({ title: '❌ Sensor Error Detected', message: `Sensor errors in bin(s): ${errorBins.map(b => b.binId).join(', ')}. Investigation required.`, severity: 'critical' });
+
+        const offlineBins = bins.filter(b => b.sensorStatus === 'offline');
+        if (offlineBins.length > 0) insights.push({ title: '🔌 Bin Offline Alert', message: `${offlineBins.length} bin(s) are offline. Check power/connectivity: ${offlineBins.map(b => b.binId).join(', ')}.`, severity: 'critical' });
+
+        const maintenanceBins = bins.filter(b => b.sensorStatus === 'maintenance');
+        if (maintenanceBins.length > 0) insights.push({ title: '🛠️ Maintenance Scheduled', message: `${maintenanceBins.length} bin(s) require scheduled maintenance: ${maintenanceBins.map(b => b.binId).join(', ')}.`, severity: 'info' });
+
+        const collectionsDue = bins.filter(b => b.fillLevel >= 85 && b.sensorStatus !== 'offline' && b.sensorStatus !== 'error').length;
+        if (collectionsDue > 0) insights.push({ title: '🚚 Collections Due Soon', message: `${collectionsDue} bins are near full and need collection.`, severity: 'info' });
+
+        // If no specific alerts, provide an overall positive status
         if (insights.length === 0) insights.push({ title: '✅ System Nominal', message: 'All bins are operating within normal parameters.', severity: 'info' });
+        
         return insights;
       }
     }
@@ -271,11 +434,12 @@
     class SmartWasteDashboard {
       constructor() {
         this.API_URL = 'https://smart-waste-bin-management-system.onrender.com/api';
-        this.WS_URL = 'wss://smart-waste-bin-management-system.onrender.com';
+        this.WS_URL = 'wss://smart-waste-bin-management-system.onrender.com'; // Use wss for secure WebSocket
         this.userSession = {};
         this.binData = [];
-        this.chart = null;
         this.aiAnalytics = new AIAnalytics();
+        this.fillLevelChart = null;
+        this.statusBreakdownChart = null;
         this.socket = null;
         this.init();
       }
@@ -283,6 +447,7 @@
       init() {
         this.showLoadingOverlay(true, 'Initializing Dashboard...');
         this.setupEventListeners();
+        this.initCharts(); // Initialize Chart.js instances
         this.switchRole(sessionStorage.getItem('userRole') || 'Admin');
         this.updateDateTime();
         setInterval(() => this.updateDateTime(), 1000);
@@ -302,10 +467,9 @@
         sessionStorage.setItem('userRole', role);
         document.body.className = `role-${role.toLowerCase().replace(/ /g, '-')}`;
         document.getElementById('userName').textContent = this.userSession.username;
+        document.getElementById('userAvatar').textContent = this.userSession.username.split(' ').map(n => n[0]).join('');
         document.getElementById('userRole').textContent = this.userSession.role;
-        const initials = this.userSession.username.split(' ').map(n => n[0]).join('');
-        document.getElementById('userAvatar').textContent = initials;
-        this.renderDashboard();
+        this.renderDashboard(); // Re-render to apply role changes
       }
       
       async connectToBackend() {
@@ -316,10 +480,19 @@
       async fetchInitialData() {
         this.showLoadingOverlay(true, 'Fetching bin data...');
         try {
-            const response = await fetch(`${this.API_URL}/bins`);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            this.binData = await response.json();
-            this.renderDashboard();
+            const [binsResponse, statsResponse] = await Promise.all([
+                fetch(`${this.API_URL}/bins`),
+                fetch(`${this.API_URL}/bins/stats/system`)
+            ]);
+
+            if (!binsResponse.ok) throw new Error(`HTTP error! Bin data status: ${binsResponse.status}`);
+            if (!statsResponse.ok) throw new Error(`HTTP error! Stats data status: ${statsResponse.status}`);
+            
+            this.binData = await binsResponse.json();
+            const stats = await statsResponse.json();
+            this.updateQuickStats(stats.data); // Pass the entire data object
+            this.updateCharts(stats.data); // Pass the entire data object
+            this.renderDashboard(); // Render after data is fetched
         } catch (error) {
             console.error("Failed to fetch initial data:", error);
             this.showNotification('Could not get initial bin data.', 'error');
@@ -331,54 +504,78 @@
 
       setupWebSocket() {
         this.updateConnectionStatus('connecting', 'Connecting...');
-        this.socket = new WebSocket(this.WS_URL);
+        try {
+            this.socket = io(this.WS_URL); // Use socket.io-client library
 
-        this.socket.onopen = () => {
-            this.updateConnectionStatus('connected', 'Live');
-            this.showNotification('Live connection established!', 'success');
-        };
+            this.socket.on('connect', () => {
+                this.updateConnectionStatus('connected', 'Live');
+                this.showNotification('Live connection established!', 'success');
+            });
 
-        this.socket.onmessage = (event) => {
-            try {
-                const message = JSON.parse(event.data);
-                this.handleSocketMessage(message);
-            } catch (error) {
-                console.error("Error parsing WebSocket message:", error);
-            }
-        };
+            this.socket.on('sensor_data_update', (message) => {
+                // The backend now sends all bins and the single updated bin
+                this.binData = message.payload; // Update all bin data
+                this.updateQuickStats(message.systemStats); // Update quick stats with the latest systemStats from backend
+                this.updateCharts(message.systemStats); // Update charts with the latest systemStats from backend
+                this.renderDashboard();
+                this.showNotification(`Bin ${message.singleBin.binId} updated. Fill: ${message.singleBin.fillLevel}%, Batt: ${message.singleBin.batteryLevel}%`, 'info', 3000);
+            });
 
-        this.socket.onclose = () => {
-            this.updateConnectionStatus('disconnected', 'Reconnecting...');
-            setTimeout(() => this.setupWebSocket(), 5000);
-        };
+            this.socket.on('bin-added', (message) => {
+                this.binData.unshift(message.payload); // Add to the beginning
+                this.updateQuickStats(message.systemStats);
+                this.updateCharts(message.systemStats);
+                this.renderDashboard();
+                this.showNotification(`New bin added: ${message.payload.binId}`, 'success');
+            });
 
-        this.socket.onerror = (error) => {
-            console.error("WebSocket error:", error);
-            this.socket.close();
-        };
+            this.socket.on('bin-removed', (message) => {
+                this.binData = this.binData.filter(b => b.binId !== message.payload.binId);
+                this.updateQuickStats(message.systemStats);
+                this.updateCharts(message.systemStats);
+                this.renderDashboard();
+                this.showNotification(`Bin removed: ${message.payload.binId}`, 'info');
+            });
+
+            this.socket.on('bin-emptied', (message) => {
+                const binIndex = this.binData.findIndex(b => b.binId === message.payload.binId);
+                if (binIndex !== -1) {
+                    this.binData[binIndex] = { ...this.binData[binIndex], ...message.payload };
+                }
+                this.updateQuickStats(message.systemStats);
+                this.updateCharts(message.systemStats);
+                this.renderDashboard();
+                this.showNotification(`Bin ${message.payload.binId} emptied!`, 'success');
+            });
+
+            this.socket.on('alert-added', (message) => {
+                this.fetchInitialData(); // Re-fetch all data to get latest alerts
+                this.showNotification(`New alert for Bin ${message.payload.binId}: ${message.payload.alert.message}`, message.payload.alert.type === 'full' || message.payload.alert.type === 'sensor_error' ? 'critical' : 'warning');
+            });
+
+            this.socket.on('alert-resolved', (message) => {
+                this.fetchInitialData(); // Re-fetch all data to get latest alerts
+                this.showNotification(`Alert resolved for Bin ${message.payload.binId}`, 'info');
+            });
+
+            this.socket.on('disconnect', () => {
+                this.updateConnectionStatus('disconnected', 'Disconnected');
+                this.showNotification('Lost connection to server. Reconnecting...', 'error');
+            });
+
+            this.socket.on('connect_error', (err) => {
+                console.error("Socket.IO connection error:", err);
+                this.updateConnectionStatus('disconnected', 'Connection Error');
+                this.showNotification('Error connecting to server. Check URL.', 'error');
+            });
+
+        } catch (error) {
+            console.error("Error setting up WebSocket:", error);
+            this.updateConnectionStatus('disconnected', 'WS Init Error');
+            this.showNotification('WebSocket initialization failed.', 'error');
+        }
       }
       
-      handleSocketMessage(message) {
-        let notificationMessage = '';
-        switch (message.type) {
-            case 'bin-update':
-                const binIndex = this.binData.findIndex(b => b.binId === message.payload.binId);
-                if (binIndex !== -1) this.binData[binIndex] = { ...this.binData[binIndex], ...message.payload };
-                break;
-            case 'bin-added':
-                this.binData.unshift(message.payload);
-                notificationMessage = `New bin added: ${message.payload.binId}`;
-                break;
-            case 'bin-removed':
-                this.binData = this.binData.filter(b => b.binId !== message.payload.binId);
-                notificationMessage = `Bin removed: ${message.payload.binId}`;
-                break;
-            default: return;
-        }
-        this.renderDashboard();
-        if (notificationMessage) this.showNotification(notificationMessage, 'info');
-      }
-
       updateDateTime() {
         const now = new Date();
         document.getElementById('currentDate').textContent = now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -386,19 +583,17 @@
       }
 
       renderDashboard() {
-        this.updateQuickStats();
+        // Quick stats and charts are now updated directly by socket messages/fetchInitialData
         this.renderAIAnalytics();
         this.renderBinCards();
-        this.renderChart();
       }
 
-      updateQuickStats() {
-        const totalBins = this.binData.length;
-        const fullBins = this.binData.filter(b => b.fillLevel >= 85).length;
-        const avgFill = totalBins > 0 ? Math.round(this.binData.reduce((sum, b) => sum + b.fillLevel, 0) / totalBins) : 0;
-        document.getElementById('totalBins').textContent = totalBins;
-        document.getElementById('fullBins').textContent = fullBins;
-        document.getElementById('avgFill').textContent = `${avgFill}%`;
+      updateQuickStats(stats) {
+        document.getElementById('totalBins').textContent = stats.totalBins || 0;
+        document.getElementById('fullBins').textContent = stats.statusBreakdown.full || 0;
+        document.getElementById('avgFill').textContent = `${Math.round(stats.averageFillLevel || 0)}%`;
+        document.getElementById('activeAlerts').textContent = stats.activeAlerts || 0;
+        document.getElementById('collectionsToday').textContent = stats.collectionsToday || 0;
       }
       
       renderAIAnalytics() {
@@ -416,36 +611,55 @@
 
       getBinsForRole() {
           const role = this.userSession.role;
-          if (role === 'Admin') return this.binData;
-          if(role === 'Supervisor') return this.binData;
-          if(role === 'Collection Officer') return this.binData.filter(b => b.fillLevel >= 70);
+          if (role === 'Admin' || role === 'Supervisor') return this.binData;
+          if(role === 'Collection Officer') return this.binData.filter(b => b.fillLevel >= 70 || b.sensorStatus === 'error' || b.sensorStatus === 'offline'); // Collection officers see problem bins too
           return [];
       }
 
+      getStatusText(bin) {
+        if (bin.sensorStatus === 'offline') return 'Offline';
+        if (bin.sensorStatus === 'error') return 'Error';
+        if (bin.sensorStatus === 'low_battery') return 'Low Battery';
+        if (bin.sensorStatus === 'warning') return 'Sensor Warning';
+        if (bin.sensorStatus === 'maintenance') return 'Maintenance';
+        if (bin.fillLevel >= 90) return 'Full';
+        return 'Active';
+      }
+
+      getStatusClass(bin) {
+        if (bin.sensorStatus === 'offline' || bin.sensorStatus === 'error') return 'inactive';
+        if (bin.sensorStatus === 'low_battery' || bin.sensorStatus === 'maintenance') return 'low';
+        if (bin.fillLevel >= 90) return 'full';
+        return 'active';
+      }
+
       createBinCardHTML(bin) {
-        const fillClass = bin.fillLevel >= 85 ? 'danger' : bin.fillLevel >= 70 ? 'warning' : '';
+        const fillClass = bin.fillLevel >= 90 ? 'danger' : bin.fillLevel >= 75 ? 'warning' : 'success';
         const role = this.userSession.role;
         let actionsHtml = '';
         if (role === 'Admin') {
-            actionsHtml = `<button class="btn btn-primary action-btn" onclick="dashboard.showNotification('Route assigned', 'info')">Assign Route</button><button class="btn btn-danger action-btn" onclick="dashboard.deleteBin('${bin.binId}')">Delete</button>`;
+            actionsHtml = `<button class="btn btn-info action-btn" onclick="dashboard.showNotification('Route assigned for bin ${bin.binId}', 'info')">Assign Route</button><button class="btn btn-danger action-btn" onclick="dashboard.deleteBin(${bin.binId})">Delete</button>`;
         } else if (role === 'Supervisor') {
-            actionsHtml = `<button class="btn btn-primary action-btn" onclick="dashboard.showNotification('Officer assigned', 'info')">Assign Officer</button>`;
+            actionsHtml = `<button class="btn btn-info action-btn" onclick="dashboard.showNotification('Officer assigned for bin ${bin.binId}', 'info')">Assign Officer</button>`;
         } else if (role === 'Collection Officer') {
-            actionsHtml = `<button class="btn btn-primary action-btn" onclick="dashboard.markCollected('${bin.binId}')">Mark Collected</button>`;
+            actionsHtml = `<button class="btn btn-primary action-btn" onclick="dashboard.markCollected(${bin.binId})">Mark Collected</button>`;
         }
         return `<div class="card bin-card">
           <div class="bin-header">
-            <div class="bin-id">${bin.binId}</div>
+            <div class="bin-id">Bin ${bin.binId}</div>
+            <span class="bin-status-badge ${this.getStatusClass(bin)}">${this.getStatusText(bin)}</span>
           </div>
           <div class="fill-display">
-            <div class="fill-percentage ${fillClass}" style="font-size: 3rem; font-weight: 700;">${bin.fillLevel}%</div>
-            <div class="progress-container" style="position: relative; height: 8px; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; margin-top: 1rem;">
-              <div class="progress-bar" style="height: 100%; border-radius: 10px; transition: width 1s ease, background 0.3s ease; width: ${bin.fillLevel}%; background: ${this.getFillLevelColor(bin.fillLevel)};"></div>
+            <div class="fill-percentage ${fillClass}">${bin.fillLevel}%</div>
+            <div class="progress-container">
+              <div class="progress-bar" style="width: ${bin.fillLevel}%; background: ${this.getFillLevelColor(bin.fillLevel)};"></div>
             </div>
           </div>
           <div class="bin-details">
             <div class="detail-item">📍 <span>${bin.location}</span></div>
             <div class="detail-item">🔋 <span>${bin.batteryLevel}% battery</span></div>
+            <div class="detail-item">🌡️ <span>${bin.temperature}°C</span></div>
+            <div class="detail-item">🗓️ <span>Emptied ${new Date(bin.lastEmptied).toLocaleDateString()}</span></div>
           </div>
           <div class="bin-actions">${actionsHtml}</div>
         </div>`;
@@ -453,16 +667,25 @@
       
       async markCollected(binId) {
           this.showNotification(`Marking bin ${binId} as collected...`, 'info');
-          // In a real app, you would send this update to the server via API or WebSocket
+          try {
+            const response = await fetch(`${this.API_URL}/bins/${binId}/emptied`, { method: 'POST' });
+            if(!response.ok) throw new Error('Server responded with an error.');
+            // Socket.IO will handle UI update
+          } catch(error) {
+            console.error('Error marking bin as collected:', error);
+            this.showNotification('Could not mark bin as collected.', 'error');
+          }
       }
 
       async deleteBin(binId) {
-          if(!confirm(`Are you sure you want to delete bin ${binId}?`)) return;
+          if(!confirm(`Are you sure you want to delete bin ${binId}? This action cannot be undone.`)) return;
           try {
             const response = await fetch(`${this.API_URL}/bins/${binId}`, { method: 'DELETE' });
             if(!response.ok) throw new Error('Server responded with an error.');
-            this.showNotification(`Bin ${binId} deleted.`, 'success');
+            // Socket.IO will handle UI update
+            this.showNotification(`Bin ${binId} deletion request sent.`, 'info');
           } catch(error) {
+            console.error('Error deleting bin:', error);
             this.showNotification('Could not delete bin.', 'error');
           }
       }
@@ -470,51 +693,112 @@
       async addNewBin() {
           const location = document.getElementById('binLocation').value;
           const capacity = document.getElementById('binCapacity').value;
-          if(!location || !capacity) return;
+          if(!location || !capacity) {
+            this.showNotification('Please fill all fields for new bin.', 'warning');
+            return;
+          }
+          this.showLoadingOverlay(true, 'Adding new bin...');
           try {
             const response = await fetch(`${this.API_URL}/bins`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ location, capacity: parseInt(capacity) })
             });
-            if(!response.ok) throw new Error('Server responded with an error.');
+            if(!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Server responded with an error.');
+            }
             document.getElementById('addBinForm').reset();
-            this.showNotification('New bin added successfully!', 'success');
+            // Socket.IO will handle UI update and success notification
           } catch(error) {
-            this.showNotification('Could not add new bin.', 'error');
+            console.error('Error adding new bin:', error);
+            this.showNotification(`Could not add new bin: ${error.message}`, 'error');
+          } finally {
+            this.showLoadingOverlay(false);
           }
       }
 
       getFillLevelColor(fillLevel) {
-        if (fillLevel >= 85) return 'var(--danger)';
-        if (fillLevel >= 70) return 'var(--warning)';
-        return 'var(--success)';
+        if (fillLevel >= 90) return 'var(--danger)';
+        if (fillLevel >= 75) return 'var(--warning)';
+        return 'var(--primary-green)';
       }
 
-      renderChart() {
-        const ctx = document.getElementById('binChart').getContext('2d');
-        if (this.chart) this.chart.destroy();
-        const binsForRole = this.getBinsForRole();
-        this.chart = new Chart(ctx, {
+      initCharts() {
+        const fillCtx = document.getElementById('fillLevelChart').getContext('2d');
+        this.fillLevelChart = new Chart(fillCtx, {
           type: 'bar',
           data: {
-            labels: binsForRole.map(b => b.binId),
+            labels: [], // Will be populated dynamically
             datasets: [{
               label: 'Fill Level (%)',
-              data: binsForRole.map(b => b.fillLevel),
-              backgroundColor: binsForRole.map(b => this.getFillLevelColor(b.fillLevel)),
+              data: [], // Will be populated dynamically
+              backgroundColor: [], // Will be populated dynamically
               borderRadius: 8,
             }]
           },
           options: {
             responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
+            plugins: { legend: { display: false }, title: { display: false } },
             scales: {
-              y: { beginAtZero: true, max: 100, ticks: { color: 'white' }, grid: { color: 'rgba(255,255,255,0.1)' } },
-              x: { ticks: { color: 'white' }, grid: { display: false } }
+              y: { beginAtZero: true, max: 100, ticks: { color: 'rgba(255,255,255,0.8)' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+              x: { ticks: { color: 'rgba(255,255,255,0.8)' }, grid: { display: false } }
             }
           }
         });
+
+        const statusCtx = document.getElementById('statusBreakdownChart').getContext('2d');
+        this.statusBreakdownChart = new Chart(statusCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Active', 'Full', 'Low Battery', 'Maintenance', 'Offline', 'Sensor Warning', 'Sensor Error'],
+                datasets: [{
+                    data: [0, 0, 0, 0, 0, 0, 0],
+                    backgroundColor: [
+                        '#2ecc71', // Active - Green
+                        '#e74c3c', // Full - Red
+                        '#f1c40f', // Low Battery - Yellow
+                        '#3498db', // Maintenance - Blue
+                        '#95a5a6', // Offline - Gray
+                        '#f39c12', // Warning - Orange
+                        '#c0392b'  // Error - Dark Red
+                    ],
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { color: 'rgba(255,255,255,0.8)' }
+                    },
+                    title: { display: false }
+                }
+            }
+        });
+      }
+
+      updateCharts(stats) {
+          // Update Fill Level Chart
+          const binsForRole = this.getBinsForRole();
+          this.fillLevelChart.data.labels = binsForRole.map(b => `Bin ${b.binId}`);
+          this.fillLevelChart.data.datasets[0].data = binsForRole.map(b => b.fillLevel);
+          this.fillLevelChart.data.datasets[0].backgroundColor = binsForRole.map(b => this.getFillLevelColor(b.fillLevel));
+          this.fillLevelChart.update();
+
+          // Update Status Breakdown Chart
+          this.statusBreakdownChart.data.datasets[0].data = [
+              stats.statusBreakdown.active || 0,
+              stats.statusBreakdown.full || 0,
+              stats.statusBreakdown.lowBattery || 0,
+              stats.statusBreakdown.maintenance || 0,
+              stats.statusBreakdown.offline || 0,
+              stats.statusBreakdown.warning || 0,
+              stats.statusBreakdown.error || 0
+          ];
+          this.statusBreakdownChart.update();
       }
 
       updateConnectionStatus(status, text) {
@@ -531,7 +815,7 @@
         overlay.classList.toggle('show', show);
       }
       
-      showNotification(message, type = 'info') {
+      showNotification(message, type = 'info', duration = 5000) {
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
         notification.textContent = message;
@@ -540,7 +824,7 @@
         setTimeout(() => {
           notification.classList.remove('show');
           setTimeout(() => notification.remove(), 300);
-        }, 5000);
+        }, duration);
       }
 
       logout() {
@@ -548,7 +832,10 @@
             this.showNotification('Logging out...', 'info');
             sessionStorage.clear();
             localStorage.clear();
-            setTimeout(() => { window.location.href = 'login.html'; }, 1500);
+            if (this.socket) {
+                this.socket.disconnect(); // Disconnect Socket.IO
+            }
+            setTimeout(() => { window.location.href = 'login.html'; }, 1500); // Redirect or clear sensitive data
         }
       }
     }
