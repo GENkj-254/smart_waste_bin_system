@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 5000;
 // 🌐 Middleware
 const allowedOrigins = [
   process.env.FRONTEND_URL,
-  'http://smart-waste-bin-management-system.onrender.com',
+  'https://smart-waste-bin-management-system.onrender.com',
   'http://localhost:5000', // A common port for frontend development
 ].filter(Boolean); // Removes any falsy values like undefined
 
