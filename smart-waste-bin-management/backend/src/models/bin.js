@@ -1,4 +1,6 @@
+// backend/src/models/bin.js - UPDATED
 const mongoose = require('mongoose');
+const Counter = require('./counter'); // Import the new Counter model
 
 const alertSchema = new mongoose.Schema({
   type: {
@@ -23,14 +25,13 @@ const alertSchema = new mongoose.Schema({
 const binSchema = new mongoose.Schema({
   binId: {
     type: Number,
-    // 🚀 MODIFIED: binId is no longer required on the schema directly
-    // It will be auto-generated in the pre-save hook
+    // MODIFIED: binId is still not required directly, but unique to ensure integrity
     unique: true,
     min: 1
   },
   location: {
     type: String,
-    required: true, // Location is still required from frontend
+    required: true,
     trim: true
   },
   fillLevel: {
@@ -42,7 +43,7 @@ const binSchema = new mongoose.Schema({
   },
   capacity: {
     type: Number,
-    required: true, // Capacity is still required from frontend
+    required: true,
     default: 100,
     min: 1
   },
@@ -130,18 +131,16 @@ binSchema.pre('save', function(next) {
   next();
 });
 
-// 🚀 NEW/MODIFIED: Pre-save hook to generate binId if not provided
+// 🚀 MODIFIED: Pre-save hook to generate binId using a separate atomic counter
 binSchema.pre('save', async function(next) {
     if (this.isNew && !this.binId) { // Only generate if it's a new document and binId is not set
         try {
-            // Find the bin with the highest binId
-            const lastBin = await this.constructor.findOne({}, {}, { sort: { 'binId': -1 } });
-            let nextBinId = 1; // Default starting ID
-
-            if (lastBin && lastBin.binId) {
-                nextBinId = lastBin.binId + 1;
-            }
-            this.binId = nextBinId;
+            const counter = await Counter.findOneAndUpdate(
+                { _id: 'binId' }, // Find the counter for 'binId'
+                { $inc: { seq: 1 } }, // Increment its sequence number by 1
+                { new: true, upsert: true } // Return the new document, create if it doesn't exist
+            );
+            this.binId = counter.seq; // Assign the atomically generated sequence to binId
             next();
         } catch (error) {
             next(error); // Pass error to Mongoose
@@ -152,7 +151,7 @@ binSchema.pre('save', async function(next) {
 });
 
 
-// 🚀 UPDATED: Pre-save middleware to update sensor status based on battery level and maintenance needs
+// UPDATED: Pre-save middleware to update sensor status based on battery level and maintenance needs
 binSchema.pre('save', function(next) {
   if (this.batteryLevel < 10) { // Critical battery
     this.sensorStatus = 'error';
@@ -242,7 +241,7 @@ binSchema.statics.findLowBatteryBins = function(threshold = 30) {
 };
 
 
-// 🚀 MAJOR UPDATE: Enhanced Static method to get comprehensive system statistics for the dashboard
+// MAJOR UPDATE: Enhanced Static method to get comprehensive system statistics for the dashboard
 binSchema.statics.getSystemStats = async function() {
   const allBins = await this.find({ isActive: true });
 
@@ -287,12 +286,12 @@ binSchema.statics.getSystemStats = async function() {
         statusBreakdown.maintenance++;
     }
 
-    if (bin.fillLevel >= 90) {
-        statusBreakdown.full++;
-    }
-
     activeAlerts += bin.metadata.alerts.filter(alert => !alert.resolved).length;
 
+    if (bin.fillLevel >= 90) { // This is based on fill level, not alert status for count
+        statusBreakdown.full++;
+    }
+    
     if (bin.lastEmptied >= todayStart) {
         collectionsToday++;
     }
